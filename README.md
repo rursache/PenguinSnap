@@ -2,7 +2,9 @@
 
 Screenshot and OCR tool for Linux (KDE Plasma / Wayland).
 
-A Linux port of [UltimateShot](https://github.com/rursache/UltimateShot) for macOS.
+A Linux port of [UltimateShot](https://apps.apple.com/us/app/ultimateshot-capture-tool/id6757807718) for macOS.
+
+<img width="350" alt="image" src="https://github.com/user-attachments/assets/4378f3d7-9744-4162-a350-911af99f179e" />
 
 ## Features
 
