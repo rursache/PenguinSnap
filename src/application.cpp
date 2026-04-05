@@ -1,0 +1,198 @@
+#include "application.h"
+#include "screenshotmanager.h"
+#include "ocrmanager.h"
+#include "outputmanager.h"
+#include "settingsmanager.h"
+#include "hotkeymanager.h"
+#include "preferencesdialog.h"
+
+#include <KStatusNotifierItem>
+#include <QApplication>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCall>
+#include <QDir>
+#include <QFile>
+#include <QImage>
+#include <QIcon>
+#include <QPalette>
+#include <QProcess>
+
+Application::Application(QObject *parent)
+    : QObject(parent)
+    , m_settingsManager(new SettingsManager(this))
+    , m_screenshotManager(new ScreenshotManager(this))
+    , m_ocrManager(new OCRManager(this))
+    , m_outputManager(new OutputManager(m_settingsManager, this))
+    , m_hotkeyManager(new HotkeyManager(this))
+{
+    // Extract bundled snap sound to a temp file for paplay
+    m_snapSoundPath = QDir::tempPath() + QStringLiteral("/penguinsnap_snap.wav");
+    QFile::remove(m_snapSoundPath);
+    QFile::copy(QStringLiteral(":/sounds/snap"), m_snapSoundPath);
+
+    setupTrayIcon();
+    setupMenu();
+
+    connect(m_screenshotManager, &ScreenshotManager::screenshotCaptured,
+            this, [this](const QImage &image) {
+        if (m_ocrMode) {
+            m_ocrMode = false;
+            onOCRScreenshotCaptured(image);
+        } else {
+            onScreenshotCaptured(image);
+        }
+    });
+
+    connect(m_screenshotManager, &ScreenshotManager::captureFailed,
+            this, [](const QString &error) {
+        qWarning("Screenshot capture failed: %s", qPrintable(error));
+    });
+
+    connect(m_ocrManager, &OCRManager::textRecognized,
+            this, [this](const QString &text) {
+        m_outputManager->copyTextToClipboard(text);
+        QString preview = text.length() > 100 ? text.left(100) + QStringLiteral("...") : text;
+        showNotification(QStringLiteral("OCR Complete"),
+                         QStringLiteral("Copied to clipboard: \"%1\"").arg(preview));
+    });
+
+    connect(m_ocrManager, &OCRManager::ocrFailed,
+            this, [this](const QString &error) {
+        showNotification(QStringLiteral("OCR Failed"), error);
+    });
+
+    connect(m_hotkeyManager, &HotkeyManager::captureAreaRequested,
+            this, &Application::captureArea);
+    connect(m_hotkeyManager, &HotkeyManager::captureWindowRequested,
+            this, &Application::captureWindow);
+    connect(m_hotkeyManager, &HotkeyManager::captureFullscreenRequested,
+            this, &Application::captureFullscreen);
+    connect(m_hotkeyManager, &HotkeyManager::captureOCRRequested,
+            this, &Application::captureOCR);
+}
+
+Application::~Application() = default;
+
+void Application::setupTrayIcon()
+{
+    m_trayIcon = new KStatusNotifierItem(this);
+    m_trayIcon->setCategory(KStatusNotifierItem::ApplicationStatus);
+    m_trayIcon->setStatus(KStatusNotifierItem::Active);
+    m_trayIcon->setToolTipTitle(QStringLiteral("PenguinSnap"));
+    m_trayIcon->setToolTipSubTitle(QStringLiteral("Screenshot & OCR Tool"));
+
+    auto palette = QApplication::palette();
+    bool isDark = palette.color(QPalette::Window).lightness() < 128;
+    QString iconPath = isDark ? QStringLiteral(":/icons/camera-white")
+                              : QStringLiteral(":/icons/camera-black");
+    m_trayIcon->setIconByPixmap(QIcon(iconPath));
+}
+
+void Application::setupMenu()
+{
+    m_menu = new QMenu();
+
+    auto *versionAction = m_menu->addAction(
+        QStringLiteral("PenguinSnap · %1").arg(QApplication::applicationVersion()));
+    versionAction->setEnabled(false);
+
+    m_menu->addSeparator();
+
+    auto *areaAction = m_menu->addAction(QStringLiteral("Capture Area"));
+    areaAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+A")));
+    connect(areaAction, &QAction::triggered, this, &Application::captureArea);
+
+    auto *windowAction = m_menu->addAction(QStringLiteral("Capture Window"));
+    windowAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+W")));
+    connect(windowAction, &QAction::triggered, this, &Application::captureWindow);
+
+    auto *fullscreenAction = m_menu->addAction(QStringLiteral("Capture Fullscreen"));
+    fullscreenAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+F")));
+    connect(fullscreenAction, &QAction::triggered, this, &Application::captureFullscreen);
+
+    auto *ocrAction = m_menu->addAction(QStringLiteral("Capture Text via OCR"));
+    ocrAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+T")));
+    connect(ocrAction, &QAction::triggered, this, &Application::captureOCR);
+
+    m_menu->addSeparator();
+
+    auto *prefsAction = m_menu->addAction(QStringLiteral("Preferences..."));
+    connect(prefsAction, &QAction::triggered, this, &Application::showPreferences);
+
+    m_trayIcon->setContextMenu(m_menu);
+}
+
+void Application::captureArea()
+{
+    m_ocrMode = false;
+    m_screenshotManager->captureArea();
+}
+
+void Application::captureWindow()
+{
+    m_ocrMode = false;
+    m_screenshotManager->captureWindow();
+}
+
+void Application::captureFullscreen()
+{
+    m_ocrMode = false;
+    m_screenshotManager->captureFullscreen();
+}
+
+void Application::captureOCR()
+{
+    m_ocrMode = true;
+    m_screenshotManager->captureArea();
+}
+
+void Application::showPreferences()
+{
+    if (!m_prefsDialog) {
+        m_prefsDialog = new PreferencesDialog(m_settingsManager, m_ocrManager);
+    }
+    m_prefsDialog->show();
+    m_prefsDialog->raise();
+    m_prefsDialog->activateWindow();
+}
+
+void Application::onScreenshotCaptured(const QImage &image)
+{
+    m_outputManager->saveScreenshot(image);
+    if (m_settingsManager->saveToClipboard()) {
+        m_outputManager->copyImageToClipboard(image);
+    }
+    playSnapSound();
+}
+
+void Application::onOCRScreenshotCaptured(const QImage &image)
+{
+    m_ocrManager->recognizeText(image, m_settingsManager->ocrLanguage());
+}
+
+void Application::showNotification(const QString &title, const QString &body)
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QStringLiteral("org.freedesktop.Notifications"),
+        QStringLiteral("/org/freedesktop/Notifications"),
+        QStringLiteral("org.freedesktop.Notifications"),
+        QStringLiteral("Notify"));
+
+    msg << QStringLiteral("PenguinSnap")   // app_name
+        << static_cast<uint>(0)            // replaces_id
+        << QStringLiteral("penguinsnap")   // app_icon (installed via CMake)
+        << title                           // summary
+        << body                            // body
+        << QStringList()                   // actions
+        << QVariantMap()                   // hints
+        << static_cast<int>(5000);         // timeout ms
+
+    QDBusConnection::sessionBus().asyncCall(msg);
+}
+
+void Application::playSnapSound()
+{
+    if (QFile::exists(m_snapSoundPath))
+        QProcess::startDetached(QStringLiteral("paplay"), {m_snapSoundPath});
+}

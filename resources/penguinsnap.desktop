@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PenguinSnap
+GenericName=Screenshot Tool
+Comment=Screenshot and OCR tool for Linux
+Exec=penguinsnap
+Icon=penguinsnap
+Categories=Utility;Graphics;
+Keywords=screenshot;capture;ocr;screen;
+StartupNotify=false
+Terminal=false

@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <file alias="camera-black">icons/camera-black-icon.svg</file>
+        <file alias="camera-white">icons/camera-white-icon.svg</file>
+    </qresource>
+    <qresource prefix="/sounds">
+        <file alias="snap">sounds/snap.wav</file>
+    </qresource>
+</RCC>

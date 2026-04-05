@@ -1,0 +1,20 @@
+name: Publish to AUR
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  aur-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: rursache/aur-deploy@v2
+        with:
+          pkgname: penguinsnap
+          pkgbuild: packaging/aur/PKGBUILD
+          srcinfo: packaging/aur/.SRCINFO
+          commit_username: "Radu Ursache"
+          commit_email: "radu@ursache.ro"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

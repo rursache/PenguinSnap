@@ -1,0 +1,24 @@
+# Maintainer: Radu Ursache <radu@ursache.ro>
+# Local development PKGBUILD — not pushed to AUR
+pkgname=penguinsnap
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Screenshot and OCR tool for Linux"
+arch=('x86_64')
+url="https://github.com/rursache/PenguinSnap"
+license=('MIT')
+depends=('qt6-base' 'qt6-wayland' 'kstatusnotifieritem' 'kglobalaccel' 'layer-shell-qt' 'tesseract' 'tesseract-data-eng' 'spectacle' 'wl-clipboard')
+makedepends=('cmake' 'extra-cmake-modules' 'git')
+
+build() {
+    cmake -B build -S "$srcdir/.." \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DAPP_VERSION="v${pkgver}"
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -D -m644 "$srcdir/../LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
