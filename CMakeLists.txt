@@ -12,6 +12,7 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets DBus)
 find_package(KF6StatusNotifierItem REQUIRED)
 find_package(KF6GlobalAccel REQUIRED)
+find_package(KF6XmlGui REQUIRED)
 find_package(LayerShellQt REQUIRED)
 
 find_package(PkgConfig REQUIRED)
@@ -64,6 +65,7 @@ target_link_libraries(penguinsnap
     Qt6::DBus
     KF6::StatusNotifierItem
     KF6::GlobalAccel
+    KF6::XmlGui
     LayerShellQt::Interface
     ${TESSERACT_LIBRARIES}
     ${LEPTONICA_LIBRARIES}

@@ -1,7 +1,10 @@
 #include "preferencesdialog.h"
 #include "settingsmanager.h"
 #include "ocrmanager.h"
+#include "hotkeymanager.h"
 
+#include <KGlobalAccel>
+#include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -9,18 +12,21 @@
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <KKeySequenceWidget>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 
-PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrManager, QWidget *parent)
+PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrManager,
+                                     HotkeyManager *hotkeyManager, QWidget *parent)
     : QDialog(parent)
     , m_settings(settings)
     , m_ocrManager(ocrManager)
+    , m_hotkeyManager(hotkeyManager)
 {
     setWindowTitle(QStringLiteral("PenguinSnap Preferences"));
-    setFixedSize(500, 350);
+    setFixedSize(500, 600);
     setupUI();
     loadSettings();
 }
@@ -60,6 +66,28 @@ void PreferencesDialog::setupUI()
 
     mainLayout->addWidget(outputGroup);
 
+    // Shortcuts
+    auto *shortcutsGroup = new QGroupBox(QStringLiteral("Shortcuts"));
+    auto *shortcutsLayout = new QFormLayout(shortcutsGroup);
+
+    m_areaShortcut = new KKeySequenceWidget();
+    m_areaShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Capture Area:"), m_areaShortcut);
+
+    m_windowShortcut = new KKeySequenceWidget();
+    m_windowShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Capture Window:"), m_windowShortcut);
+
+    m_fullscreenShortcut = new KKeySequenceWidget();
+    m_fullscreenShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Capture Fullscreen:"), m_fullscreenShortcut);
+
+    m_ocrShortcut = new KKeySequenceWidget();
+    m_ocrShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Capture Text (OCR):"), m_ocrShortcut);
+
+    mainLayout->addWidget(shortcutsGroup);
+
     // OCR
     auto *ocrGroup = new QGroupBox(QStringLiteral("OCR"));
     auto *ocrLayout = new QFormLayout(ocrGroup);
@@ -94,6 +122,19 @@ void PreferencesDialog::loadSettings()
     int langIdx = m_languageCombo->findText(m_settings->ocrLanguage());
     if (langIdx >= 0)
         m_languageCombo->setCurrentIndex(langIdx);
+
+    // Load current shortcuts from KGlobalAccel
+    auto areaKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureAreaAction());
+    m_areaShortcut->setKeySequence(areaKeys.isEmpty() ? QKeySequence() : areaKeys.first());
+
+    auto windowKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureWindowAction());
+    m_windowShortcut->setKeySequence(windowKeys.isEmpty() ? QKeySequence() : windowKeys.first());
+
+    auto fullscreenKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureFullscreenAction());
+    m_fullscreenShortcut->setKeySequence(fullscreenKeys.isEmpty() ? QKeySequence() : fullscreenKeys.first());
+
+    auto ocrKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureOCRAction());
+    m_ocrShortcut->setKeySequence(ocrKeys.isEmpty() ? QKeySequence() : ocrKeys.first());
 }
 
 void PreferencesDialog::saveSettings()
@@ -102,6 +143,18 @@ void PreferencesDialog::saveSettings()
     m_settings->setSaveToClipboard(m_clipboardCheck->isChecked());
     m_settings->setFilenamePattern(m_patternEdit->text());
     m_settings->setOcrLanguage(m_languageCombo->currentText());
+
+    // Save shortcuts via KGlobalAccel
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureAreaAction(),
+        {m_areaShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureWindowAction(),
+        {m_windowShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureFullscreenAction(),
+        {m_fullscreenShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureOCRAction(),
+        {m_ocrShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+
+    emit shortcutsChanged();
 }
 
 void PreferencesDialog::chooseSaveDirectory()

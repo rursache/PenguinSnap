@@ -6,7 +6,9 @@
 #include "hotkeymanager.h"
 #include "preferencesdialog.h"
 
+#include <KGlobalAccel>
 #include <KStatusNotifierItem>
+#include <QAction>
 #include <QApplication>
 #include <QDBusConnection>
 #include <QDBusMessage>
@@ -99,21 +101,17 @@ void Application::setupMenu()
 
     m_menu->addSeparator();
 
-    auto *areaAction = m_menu->addAction(QStringLiteral("Capture Area"));
-    areaAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+A")));
-    connect(areaAction, &QAction::triggered, this, &Application::captureArea);
+    m_areaMenuAction = m_menu->addAction(QStringLiteral("Capture Area"));
+    connect(m_areaMenuAction, &QAction::triggered, this, &Application::captureArea);
 
-    auto *windowAction = m_menu->addAction(QStringLiteral("Capture Window"));
-    windowAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+W")));
-    connect(windowAction, &QAction::triggered, this, &Application::captureWindow);
+    m_windowMenuAction = m_menu->addAction(QStringLiteral("Capture Window"));
+    connect(m_windowMenuAction, &QAction::triggered, this, &Application::captureWindow);
 
-    auto *fullscreenAction = m_menu->addAction(QStringLiteral("Capture Fullscreen"));
-    fullscreenAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+F")));
-    connect(fullscreenAction, &QAction::triggered, this, &Application::captureFullscreen);
+    m_fullscreenMenuAction = m_menu->addAction(QStringLiteral("Capture Fullscreen"));
+    connect(m_fullscreenMenuAction, &QAction::triggered, this, &Application::captureFullscreen);
 
-    auto *ocrAction = m_menu->addAction(QStringLiteral("Capture Text via OCR"));
-    ocrAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+Alt+T")));
-    connect(ocrAction, &QAction::triggered, this, &Application::captureOCR);
+    m_ocrMenuAction = m_menu->addAction(QStringLiteral("Capture Text via OCR"));
+    connect(m_ocrMenuAction, &QAction::triggered, this, &Application::captureOCR);
 
     m_menu->addSeparator();
 
@@ -121,6 +119,20 @@ void Application::setupMenu()
     connect(prefsAction, &QAction::triggered, this, &Application::showPreferences);
 
     m_trayIcon->setContextMenu(m_menu);
+    updateMenuShortcuts();
+}
+
+void Application::updateMenuShortcuts()
+{
+    auto shortcutFor = [](QAction *globalAction) -> QKeySequence {
+        auto keys = KGlobalAccel::self()->shortcut(globalAction);
+        return keys.isEmpty() ? QKeySequence() : keys.first();
+    };
+
+    m_areaMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureAreaAction()));
+    m_windowMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureWindowAction()));
+    m_fullscreenMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureFullscreenAction()));
+    m_ocrMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureOCRAction()));
 }
 
 void Application::captureArea()
@@ -150,7 +162,9 @@ void Application::captureOCR()
 void Application::showPreferences()
 {
     if (!m_prefsDialog) {
-        m_prefsDialog = new PreferencesDialog(m_settingsManager, m_ocrManager);
+        m_prefsDialog = new PreferencesDialog(m_settingsManager, m_ocrManager, m_hotkeyManager);
+        connect(m_prefsDialog, &PreferencesDialog::shortcutsChanged,
+                this, &Application::updateMenuShortcuts);
     }
     m_prefsDialog->show();
     m_prefsDialog->raise();

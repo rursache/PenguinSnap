@@ -18,14 +18,9 @@ A Linux port of [UltimateShot](https://apps.apple.com/us/app/ultimateshot-captur
 - Shutter sound on capture
 - Preferences: save directory, filename pattern, clipboard toggle, OCR language, autostart
 
-## Default Shortcuts
+## Keyboard Shortcuts
 
-| Action | Shortcut |
-|--------|----------|
-| Capture Area | `Ctrl+Shift+Alt+A` |
-| Capture Window | `Ctrl+Shift+Alt+W` |
-| Capture Fullscreen | `Ctrl+Shift+Alt+F` |
-| Capture Text via OCR | `Ctrl+Shift+Alt+T` |
+Global keyboard shortcuts can be configured in PenguinSnap's **Preferences** dialog or via **KDE System Settings > Shortcuts > PenguinSnap**. No shortcuts are set by default.
 
 ## Installation
 

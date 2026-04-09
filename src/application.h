@@ -28,6 +28,7 @@ private slots:
 private:
     void setupTrayIcon();
     void setupMenu();
+    void updateMenuShortcuts();
     void onScreenshotCaptured(const QImage &image);
     void onOCRScreenshotCaptured(const QImage &image);
     void showNotification(const QString &title, const QString &body);
@@ -36,6 +37,10 @@ private:
     KStatusNotifierItem *m_trayIcon = nullptr;
     QString m_snapSoundPath;
     QMenu *m_menu = nullptr;
+    QAction *m_areaMenuAction = nullptr;
+    QAction *m_windowMenuAction = nullptr;
+    QAction *m_fullscreenMenuAction = nullptr;
+    QAction *m_ocrMenuAction = nullptr;
     SettingsManager *m_settingsManager;
     ScreenshotManager *m_screenshotManager;
     OCRManager *m_ocrManager;
