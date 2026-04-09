@@ -20,6 +20,9 @@ public:
     bool startAtLogin() const;
     void setStartAtLogin(bool enabled);
 
+    int timerDuration() const;
+    void setTimerDuration(int seconds);
+
     QString ocrLanguage() const;
     void setOcrLanguage(const QString &lang);
 

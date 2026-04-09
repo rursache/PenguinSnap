@@ -48,6 +48,7 @@ set(SOURCES
     src/preferencesdialog.cpp
     src/selectionoverlay.cpp
     src/windowoverlay.cpp
+    src/countdownoverlay.cpp
     resources/resources.qrc
 )
 

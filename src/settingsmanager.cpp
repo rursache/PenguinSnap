@@ -80,6 +80,17 @@ void SettingsManager::setStartAtLogin(bool enabled)
     emit settingsChanged();
 }
 
+int SettingsManager::timerDuration() const
+{
+    return m_settings.value(QStringLiteral("timerDuration"), 3).toInt();
+}
+
+void SettingsManager::setTimerDuration(int seconds)
+{
+    m_settings.setValue(QStringLiteral("timerDuration"), seconds);
+    emit settingsChanged();
+}
+
 QString SettingsManager::ocrLanguage() const
 {
     return m_settings.value(QStringLiteral("ocrLanguage"),

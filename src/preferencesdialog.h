@@ -7,6 +7,8 @@ class OCRManager;
 class HotkeyManager;
 class QCheckBox;
 class QComboBox;
+class QLabel;
+class QSlider;
 class KKeySequenceWidget;
 class QLineEdit;
 
@@ -37,4 +39,8 @@ private:
     KKeySequenceWidget *m_windowShortcut;
     KKeySequenceWidget *m_fullscreenShortcut;
     KKeySequenceWidget *m_ocrShortcut;
+    KKeySequenceWidget *m_timedAreaShortcut;
+    KKeySequenceWidget *m_timedFullscreenShortcut;
+    QSlider *m_timerSlider;
+    QLabel *m_timerLabel;
 };

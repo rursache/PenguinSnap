@@ -249,6 +249,44 @@ void ScreenshotManager::raiseAndCapture(const QString &windowId)
     });
 }
 
+// ── Timed area selection (rect only) ────────────────────────────
+
+void ScreenshotManager::selectAreaRect()
+{
+    QString out = tempFilePath();
+    auto *proc = new QProcess(this);
+
+    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this, proc, out](int exitCode, QProcess::ExitStatus) {
+        proc->deleteLater();
+        if (exitCode != 0) { QFile::remove(out); return; }
+        if (!QFileInfo::exists(out)) {
+            emit captureFailed(QStringLiteral("Spectacle did not produce an output file"));
+            return;
+        }
+        QImage fullscreen(out);
+        QFile::remove(out);
+        if (fullscreen.isNull()) {
+            emit captureFailed(QStringLiteral("Failed to load captured screenshot"));
+            return;
+        }
+        auto *overlay = new SelectionOverlay(fullscreen);
+        connect(overlay, &SelectionOverlay::rectSelected,
+                this, &ScreenshotManager::areaRectSelected);
+        connect(overlay, &SelectionOverlay::selectionCancelled,
+                overlay, &QObject::deleteLater);
+    });
+
+    proc->start(QStringLiteral("spectacle"),
+                {QStringLiteral("-i"), QStringLiteral("-m"),
+                 QStringLiteral("-b"), QStringLiteral("-n"),
+                 QStringLiteral("-o"), out});
+    if (!proc->waitForStarted(3000)) {
+        proc->deleteLater();
+        emit captureFailed(QStringLiteral("Failed to launch Spectacle"));
+    }
+}
+
 // ── Fullscreen ───────────────────────────────────────────────────
 
 void ScreenshotManager::captureFullscreen()

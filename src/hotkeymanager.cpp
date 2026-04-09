@@ -34,4 +34,16 @@ void HotkeyManager::registerShortcuts()
     m_captureOCR->setText(QStringLiteral("Capture Text via OCR"));
     KGlobalAccel::setGlobalShortcut(m_captureOCR, QList<QKeySequence>());
     connect(m_captureOCR, &QAction::triggered, this, &HotkeyManager::captureOCRRequested);
+
+    m_timedCaptureArea = new QAction(this);
+    m_timedCaptureArea->setObjectName(QStringLiteral("timed_capture_area"));
+    m_timedCaptureArea->setText(QStringLiteral("Timed Capture Area"));
+    KGlobalAccel::setGlobalShortcut(m_timedCaptureArea, QList<QKeySequence>());
+    connect(m_timedCaptureArea, &QAction::triggered, this, &HotkeyManager::timedCaptureAreaRequested);
+
+    m_timedCaptureFullscreen = new QAction(this);
+    m_timedCaptureFullscreen->setObjectName(QStringLiteral("timed_capture_fullscreen"));
+    m_timedCaptureFullscreen->setText(QStringLiteral("Timed Capture Fullscreen"));
+    KGlobalAccel::setGlobalShortcut(m_timedCaptureFullscreen, QList<QKeySequence>());
+    connect(m_timedCaptureFullscreen, &QAction::triggered, this, &HotkeyManager::timedCaptureFullscreenRequested);
 }

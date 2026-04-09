@@ -16,6 +16,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSlider>
 #include <QVBoxLayout>
 
 PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrManager,
@@ -26,7 +27,7 @@ PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrM
     , m_hotkeyManager(hotkeyManager)
 {
     setWindowTitle(QStringLiteral("PenguinSnap Preferences"));
-    setFixedSize(500, 600);
+    setFixedSize(500, 750);
     setupUI();
     loadSettings();
 }
@@ -66,6 +67,29 @@ void PreferencesDialog::setupUI()
 
     mainLayout->addWidget(outputGroup);
 
+    // Capture
+    auto *captureGroup = new QGroupBox(QStringLiteral("Capture"));
+    auto *captureLayout = new QFormLayout(captureGroup);
+
+    auto *timerLayout = new QHBoxLayout();
+    m_timerSlider = new QSlider(Qt::Horizontal);
+    m_timerSlider->setRange(3, 15);
+    m_timerSlider->setSingleStep(1);
+    m_timerSlider->setTickInterval(1);
+    m_timerSlider->setTickPosition(QSlider::TicksBelow);
+    m_timerLabel = new QLabel();
+    m_timerLabel->setFixedWidth(30);
+    m_timerLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    timerLayout->addWidget(m_timerSlider);
+    timerLayout->addWidget(m_timerLabel);
+    captureLayout->addRow(QStringLiteral("Timer duration:"), timerLayout);
+
+    connect(m_timerSlider, &QSlider::valueChanged, this, [this](int val) {
+        m_timerLabel->setText(QStringLiteral("%1s").arg(val));
+    });
+
+    mainLayout->addWidget(captureGroup);
+
     // Shortcuts
     auto *shortcutsGroup = new QGroupBox(QStringLiteral("Shortcuts"));
     auto *shortcutsLayout = new QFormLayout(shortcutsGroup);
@@ -85,6 +109,14 @@ void PreferencesDialog::setupUI()
     m_ocrShortcut = new KKeySequenceWidget();
     m_ocrShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
     shortcutsLayout->addRow(QStringLiteral("Capture Text (OCR):"), m_ocrShortcut);
+
+    m_timedAreaShortcut = new KKeySequenceWidget();
+    m_timedAreaShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Timed Capture Area:"), m_timedAreaShortcut);
+
+    m_timedFullscreenShortcut = new KKeySequenceWidget();
+    m_timedFullscreenShortcut->setCheckForConflictsAgainst(KKeySequenceWidget::GlobalShortcuts);
+    shortcutsLayout->addRow(QStringLiteral("Timed Capture Fullscreen:"), m_timedFullscreenShortcut);
 
     mainLayout->addWidget(shortcutsGroup);
 
@@ -123,6 +155,9 @@ void PreferencesDialog::loadSettings()
     if (langIdx >= 0)
         m_languageCombo->setCurrentIndex(langIdx);
 
+    m_timerSlider->setValue(m_settings->timerDuration());
+    m_timerLabel->setText(QStringLiteral("%1s").arg(m_settings->timerDuration()));
+
     // Load current shortcuts from KGlobalAccel
     auto areaKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureAreaAction());
     m_areaShortcut->setKeySequence(areaKeys.isEmpty() ? QKeySequence() : areaKeys.first());
@@ -135,6 +170,12 @@ void PreferencesDialog::loadSettings()
 
     auto ocrKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->captureOCRAction());
     m_ocrShortcut->setKeySequence(ocrKeys.isEmpty() ? QKeySequence() : ocrKeys.first());
+
+    auto timedAreaKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->timedCaptureAreaAction());
+    m_timedAreaShortcut->setKeySequence(timedAreaKeys.isEmpty() ? QKeySequence() : timedAreaKeys.first());
+
+    auto timedFsKeys = KGlobalAccel::self()->shortcut(m_hotkeyManager->timedCaptureFullscreenAction());
+    m_timedFullscreenShortcut->setKeySequence(timedFsKeys.isEmpty() ? QKeySequence() : timedFsKeys.first());
 }
 
 void PreferencesDialog::saveSettings()
@@ -143,6 +184,7 @@ void PreferencesDialog::saveSettings()
     m_settings->setSaveToClipboard(m_clipboardCheck->isChecked());
     m_settings->setFilenamePattern(m_patternEdit->text());
     m_settings->setOcrLanguage(m_languageCombo->currentText());
+    m_settings->setTimerDuration(m_timerSlider->value());
 
     // Save shortcuts via KGlobalAccel
     KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureAreaAction(),
@@ -153,6 +195,10 @@ void PreferencesDialog::saveSettings()
         {m_fullscreenShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
     KGlobalAccel::self()->setShortcut(m_hotkeyManager->captureOCRAction(),
         {m_ocrShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->timedCaptureAreaAction(),
+        {m_timedAreaShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
+    KGlobalAccel::self()->setShortcut(m_hotkeyManager->timedCaptureFullscreenAction(),
+        {m_timedFullscreenShortcut->keySequence()}, KGlobalAccel::NoAutoloading);
 
     emit shortcutsChanged();
 }

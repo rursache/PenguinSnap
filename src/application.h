@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QMenu>
+#include <QRect>
 
 class KStatusNotifierItem;
 class ScreenshotManager;
@@ -10,6 +11,7 @@ class OutputManager;
 class SettingsManager;
 class HotkeyManager;
 class PreferencesDialog;
+class CountdownOverlay;
 class QImage;
 
 class Application : public QObject {
@@ -23,6 +25,8 @@ private slots:
     void captureWindow();
     void captureFullscreen();
     void captureOCR();
+    void timedCaptureArea();
+    void timedCaptureFullscreen();
     void showPreferences();
 
 private:
@@ -31,6 +35,7 @@ private:
     void updateMenuShortcuts();
     void onScreenshotCaptured(const QImage &image);
     void onOCRScreenshotCaptured(const QImage &image);
+    void startCountdown(int seconds, const QRect &selectedRect = QRect());
     void showNotification(const QString &title, const QString &body);
     void playSnapSound();
 
@@ -41,11 +46,17 @@ private:
     QAction *m_windowMenuAction = nullptr;
     QAction *m_fullscreenMenuAction = nullptr;
     QAction *m_ocrMenuAction = nullptr;
+    QAction *m_timedAreaMenuAction = nullptr;
+    QAction *m_timedFullscreenMenuAction = nullptr;
     SettingsManager *m_settingsManager;
     ScreenshotManager *m_screenshotManager;
     OCRManager *m_ocrManager;
     OutputManager *m_outputManager;
     HotkeyManager *m_hotkeyManager;
     PreferencesDialog *m_prefsDialog = nullptr;
+    CountdownOverlay *m_countdown = nullptr;
+    QRect m_timedAreaRect;
     bool m_ocrMode = false;
+    bool m_timedAreaMode = false;
+    bool m_timedFullscreenMode = false;
 };

@@ -5,6 +5,7 @@
 #include "settingsmanager.h"
 #include "hotkeymanager.h"
 #include "preferencesdialog.h"
+#include "countdownoverlay.h"
 
 #include <KGlobalAccel>
 #include <KStatusNotifierItem>
@@ -19,6 +20,7 @@
 #include <QIcon>
 #include <QPalette>
 #include <QProcess>
+#include <QScreen>
 
 Application::Application(QObject *parent)
     : QObject(parent)
@@ -51,6 +53,13 @@ Application::Application(QObject *parent)
         qWarning("Screenshot capture failed: %s", qPrintable(error));
     });
 
+    // Timed area: user selected a rect → show countdown → capture
+    connect(m_screenshotManager, &ScreenshotManager::areaRectSelected,
+            this, [this](const QRect &widgetRect) {
+        m_timedAreaRect = widgetRect;
+        startCountdown(m_settingsManager->timerDuration(), widgetRect);
+    });
+
     connect(m_ocrManager, &OCRManager::textRecognized,
             this, [this](const QString &text) {
         m_outputManager->copyTextToClipboard(text);
@@ -72,6 +81,10 @@ Application::Application(QObject *parent)
             this, &Application::captureFullscreen);
     connect(m_hotkeyManager, &HotkeyManager::captureOCRRequested,
             this, &Application::captureOCR);
+    connect(m_hotkeyManager, &HotkeyManager::timedCaptureAreaRequested,
+            this, &Application::timedCaptureArea);
+    connect(m_hotkeyManager, &HotkeyManager::timedCaptureFullscreenRequested,
+            this, &Application::timedCaptureFullscreen);
 }
 
 Application::~Application() = default;
@@ -115,6 +128,14 @@ void Application::setupMenu()
 
     m_menu->addSeparator();
 
+    m_timedAreaMenuAction = m_menu->addAction(QStringLiteral("Timed Capture Area"));
+    connect(m_timedAreaMenuAction, &QAction::triggered, this, &Application::timedCaptureArea);
+
+    m_timedFullscreenMenuAction = m_menu->addAction(QStringLiteral("Timed Capture Fullscreen"));
+    connect(m_timedFullscreenMenuAction, &QAction::triggered, this, &Application::timedCaptureFullscreen);
+
+    m_menu->addSeparator();
+
     auto *prefsAction = m_menu->addAction(QStringLiteral("Preferences..."));
     connect(prefsAction, &QAction::triggered, this, &Application::showPreferences);
 
@@ -133,6 +154,8 @@ void Application::updateMenuShortcuts()
     m_windowMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureWindowAction()));
     m_fullscreenMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureFullscreenAction()));
     m_ocrMenuAction->setShortcut(shortcutFor(m_hotkeyManager->captureOCRAction()));
+    m_timedAreaMenuAction->setShortcut(shortcutFor(m_hotkeyManager->timedCaptureAreaAction()));
+    m_timedFullscreenMenuAction->setShortcut(shortcutFor(m_hotkeyManager->timedCaptureFullscreenAction()));
 }
 
 void Application::captureArea()
@@ -159,6 +182,43 @@ void Application::captureOCR()
     m_screenshotManager->captureArea();
 }
 
+void Application::timedCaptureArea()
+{
+    m_ocrMode = false;
+    m_screenshotManager->selectAreaRect();
+}
+
+void Application::timedCaptureFullscreen()
+{
+    m_ocrMode = false;
+    m_timedFullscreenMode = true;
+    startCountdown(m_settingsManager->timerDuration());
+}
+
+void Application::startCountdown(int seconds, const QRect &selectedRect)
+{
+    m_countdown = new CountdownOverlay(seconds, selectedRect);
+
+    connect(m_countdown, &CountdownOverlay::countdownFinished, this, [this]() {
+        m_countdown = nullptr;
+        if (m_timedFullscreenMode) {
+            m_timedFullscreenMode = false;
+            m_screenshotManager->captureFullscreen();
+        } else {
+            // Timed area: take fresh fullscreen, crop to saved rect
+            // We need to get screen geometry to map widget rect to image rect
+            m_timedAreaMode = true;
+            m_screenshotManager->captureFullscreen();
+        }
+    });
+
+    connect(m_countdown, &CountdownOverlay::countdownCancelled, this, [this]() {
+        m_countdown = nullptr;
+        m_timedFullscreenMode = false;
+        m_timedAreaMode = false;
+    });
+}
+
 void Application::showPreferences()
 {
     if (!m_prefsDialog) {
@@ -173,6 +233,28 @@ void Application::showPreferences()
 
 void Application::onScreenshotCaptured(const QImage &image)
 {
+    if (m_timedAreaMode) {
+        m_timedAreaMode = false;
+        // Crop the fullscreen image to the saved widget rect.
+        // The widget rect is in overlay (screen) coordinates.
+        // The image from Spectacle fullscreen matches the screen resolution.
+        QScreen *screen = QApplication::primaryScreen();
+        if (screen && !m_timedAreaRect.isNull()) {
+            qreal dpr = screen->devicePixelRatio();
+            QRect imgRect(
+                qRound(m_timedAreaRect.x() * dpr),
+                qRound(m_timedAreaRect.y() * dpr),
+                qRound(m_timedAreaRect.width() * dpr),
+                qRound(m_timedAreaRect.height() * dpr));
+            QImage cropped = image.copy(imgRect);
+            m_outputManager->saveScreenshot(cropped);
+            if (m_settingsManager->saveToClipboard())
+                m_outputManager->copyImageToClipboard(cropped);
+            playSnapSound();
+        }
+        return;
+    }
+
     m_outputManager->saveScreenshot(image);
     if (m_settingsManager->saveToClipboard()) {
         m_outputManager->copyImageToClipboard(image);
