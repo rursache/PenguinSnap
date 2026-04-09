@@ -20,13 +20,14 @@ public slots:
     void captureArea();
     void captureWindow();
     void captureFullscreen();
+    void captureMonitor();
     void selectAreaRect();
 
     Q_SCRIPTABLE void receiveWindowList(const QString &data);
 
 signals:
     void screenshotCaptured(const QImage &image);
-    void areaRectSelected(const QRect &widgetRect);
+    void areaRectSelected(const QRect &widgetRect, const QRect &imageRect);
     void captureFailed(const QString &error);
 
 private:

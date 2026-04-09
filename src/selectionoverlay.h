@@ -12,7 +12,7 @@ public:
 
 signals:
     void regionSelected(const QImage &cropped);
-    void rectSelected(const QRect &screenRect);
+    void rectSelected(const QRect &widgetRect, const QRect &imageRect);
     void selectionCancelled();
 
 protected:

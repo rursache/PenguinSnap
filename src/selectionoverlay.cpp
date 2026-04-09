@@ -108,7 +108,7 @@ void SelectionOverlay::mouseReleaseEvent(QMouseEvent *event)
             QRect src = imageRect(sel);
             QImage cropped = m_screenshot.copy(src);
             emit regionSelected(cropped);
-            emit rectSelected(sel);
+            emit rectSelected(sel, src);
         } else {
             emit selectionCancelled();
         }

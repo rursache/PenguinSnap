@@ -55,8 +55,8 @@ Application::Application(QObject *parent)
 
     // Timed area: user selected a rect → show countdown → capture
     connect(m_screenshotManager, &ScreenshotManager::areaRectSelected,
-            this, [this](const QRect &widgetRect) {
-        m_timedAreaRect = widgetRect;
+            this, [this](const QRect &widgetRect, const QRect &imageRect) {
+        m_timedAreaRect = imageRect;
         startCountdown(m_settingsManager->timerDuration(), widgetRect);
     });
 
@@ -205,10 +205,9 @@ void Application::startCountdown(int seconds, const QRect &selectedRect)
             m_timedFullscreenMode = false;
             m_screenshotManager->captureFullscreen();
         } else {
-            // Timed area: take fresh fullscreen, crop to saved rect
-            // We need to get screen geometry to map widget rect to image rect
+            // Timed area: take fresh monitor capture, crop to saved rect
             m_timedAreaMode = true;
-            m_screenshotManager->captureFullscreen();
+            m_screenshotManager->captureMonitor();
         }
     });
 
@@ -235,18 +234,8 @@ void Application::onScreenshotCaptured(const QImage &image)
 {
     if (m_timedAreaMode) {
         m_timedAreaMode = false;
-        // Crop the fullscreen image to the saved widget rect.
-        // The widget rect is in overlay (screen) coordinates.
-        // The image from Spectacle fullscreen matches the screen resolution.
-        QScreen *screen = QApplication::primaryScreen();
-        if (screen && !m_timedAreaRect.isNull()) {
-            qreal dpr = screen->devicePixelRatio();
-            QRect imgRect(
-                qRound(m_timedAreaRect.x() * dpr),
-                qRound(m_timedAreaRect.y() * dpr),
-                qRound(m_timedAreaRect.width() * dpr),
-                qRound(m_timedAreaRect.height() * dpr));
-            QImage cropped = image.copy(imgRect);
+        if (!m_timedAreaRect.isNull()) {
+            QImage cropped = image.copy(m_timedAreaRect);
             m_outputManager->saveScreenshot(cropped);
             if (m_settingsManager->saveToClipboard())
                 m_outputManager->copyImageToClipboard(cropped);

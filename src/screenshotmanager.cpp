@@ -249,6 +249,16 @@ void ScreenshotManager::raiseAndCapture(const QString &windowId)
     });
 }
 
+// ── Monitor (current screen, no UI) ─────────────────────────────
+
+void ScreenshotManager::captureMonitor()
+{
+    QString out = tempFilePath();
+    runSpectacle({QStringLiteral("-i"), QStringLiteral("-m"),
+                  QStringLiteral("-b"), QStringLiteral("-n"),
+                  QStringLiteral("-o"), out});
+}
+
 // ── Timed area selection (rect only) ────────────────────────────
 
 void ScreenshotManager::selectAreaRect()
@@ -272,7 +282,9 @@ void ScreenshotManager::selectAreaRect()
         }
         auto *overlay = new SelectionOverlay(fullscreen);
         connect(overlay, &SelectionOverlay::rectSelected,
-                this, &ScreenshotManager::areaRectSelected);
+                this, [this](const QRect &widgetRect, const QRect &imageRect) {
+            emit areaRectSelected(widgetRect, imageRect);
+        });
         connect(overlay, &SelectionOverlay::selectionCancelled,
                 overlay, &QObject::deleteLater);
     });

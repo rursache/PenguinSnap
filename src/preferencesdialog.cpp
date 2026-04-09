@@ -27,7 +27,7 @@ PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrM
     , m_hotkeyManager(hotkeyManager)
 {
     setWindowTitle(QStringLiteral("PenguinSnap Preferences"));
-    setFixedSize(500, 750);
+    setFixedSize(500, 720);
     setupUI();
     loadSettings();
 }
