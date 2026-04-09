@@ -27,7 +27,7 @@ PreferencesDialog::PreferencesDialog(SettingsManager *settings, OCRManager *ocrM
     , m_hotkeyManager(hotkeyManager)
 {
     setWindowTitle(QStringLiteral("PenguinSnap Preferences"));
-    setFixedSize(500, 720);
+    setFixedSize(560, 660);
     setupUI();
     loadSettings();
 }
@@ -36,7 +36,9 @@ void PreferencesDialog::setupUI()
 {
     auto *mainLayout = new QVBoxLayout(this);
 
-    // General
+    // General + OCR side by side
+    auto *topRow = new QHBoxLayout();
+
     auto *generalGroup = new QGroupBox(QStringLiteral("General"));
     auto *generalLayout = new QFormLayout(generalGroup);
 
@@ -46,7 +48,20 @@ void PreferencesDialog::setupUI()
     m_clipboardCheck = new QCheckBox(QStringLiteral("Copy screenshots to clipboard"));
     generalLayout->addRow(m_clipboardCheck);
 
-    mainLayout->addWidget(generalGroup);
+    topRow->addWidget(generalGroup);
+
+    auto *ocrGroup = new QGroupBox(QStringLiteral("OCR"));
+    auto *ocrLayout = new QFormLayout(ocrGroup);
+
+    m_languageCombo = new QComboBox();
+    const QStringList langs = m_ocrManager->availableLanguages();
+    for (const auto &lang : langs)
+        m_languageCombo->addItem(lang);
+    ocrLayout->addRow(QStringLiteral("Language:"), m_languageCombo);
+
+    topRow->addWidget(ocrGroup);
+
+    mainLayout->addLayout(topRow);
 
     // Output
     auto *outputGroup = new QGroupBox(QStringLiteral("Output"));
@@ -119,18 +134,6 @@ void PreferencesDialog::setupUI()
     shortcutsLayout->addRow(QStringLiteral("Timed Capture Fullscreen:"), m_timedFullscreenShortcut);
 
     mainLayout->addWidget(shortcutsGroup);
-
-    // OCR
-    auto *ocrGroup = new QGroupBox(QStringLiteral("OCR"));
-    auto *ocrLayout = new QFormLayout(ocrGroup);
-
-    m_languageCombo = new QComboBox();
-    const QStringList langs = m_ocrManager->availableLanguages();
-    for (const auto &lang : langs)
-        m_languageCombo->addItem(lang);
-    ocrLayout->addRow(QStringLiteral("Language:"), m_languageCombo);
-
-    mainLayout->addWidget(ocrGroup);
 
     // Buttons
     mainLayout->addStretch();
